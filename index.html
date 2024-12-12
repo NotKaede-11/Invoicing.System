@@ -130,12 +130,10 @@
             width: 100%;
             left: 0;
             box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.2);
-            padding: 5px 0; /* Reduced padding */
-            font-size: 0.8em; /* Smaller font size */
+            padding: 5px 0;
+            font-size: 0.8em;
         }
     </style>
-    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
-    <script defer src="https://pyscript.net/latest/pyscript.js"></script>
     <link rel="icon" type="image/x-icon" href="picture/favicon.jpg">
 </head>
 <body>
@@ -190,96 +188,84 @@
         <pre id="preview"></pre>
     </div>
 
-    <py-script>
-        """
-        Invoice Generator Program
-        Author: Beomarc Andrew D. Cartoneros
-        Copyright (c) 2024 Beomarc Andrew D. Cartoneros. All rights reserved.
-        """
+    <script>
+        function formatPrice(priceStr) {
+            return parseFloat(priceStr.replace(',', ''));
+        }
 
-        from pyodide.ffi import create_proxy
-        import re
+        function generateInvoice(event) {
+            event.preventDefault();
+            
+            const currencySymbol = document.getElementById('currency').value === 'PHP' ? '₱' : '$';
+            
+            const asciiBanner = [
+                '╔══════════════════════════════════════════╗',
+                '║             OFFICIAL INVOICE             ║',
+                '╚══════════════════════════════════════════╝'
+            ].join('\n');
+            
+            const customerInfo = [
+                '------------------------------------------------',
+                'Customer Information:',
+                `Name: ${document.getElementById('name').value}`,
+                `Email: ${document.getElementById('email').value}`,
+                `Phone: ${document.getElementById('phone').value}`,
+                `Date: ${document.getElementById('date').value}`,
+                '',
+                'Product Details:'
+            ].join('\n');
+            
+            const productsContainer = document.getElementById('products-container');
+            const productEntries = productsContainer.getElementsByClassName('product-entry');
+            let total = 0;
+            
+            const productsList = Array.from(productEntries).map((entry, index) => {
+                const productName = document.getElementById(`product${index + 1}`).value;
+                const price = formatPrice(document.getElementById(`price${index + 1}`).value);
+                total += price;
+                return `${index + 1}. ${productName}: ${currencySymbol}${price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            }).join('\n');
+            
+            const footer = [
+                '',
+                '------------------------------------------------',
+                `Total Amount: ${currencySymbol}${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`,
+                '------------------------------------------------'
+            ].join('\n');
+            
+            const invoiceText = `${asciiBanner}\n${customerInfo}\n${productsList}\n${footer}`;
+            
+            const resultElement = document.getElementById('result');
+            const previewElement = document.getElementById('preview');
+            previewElement.textContent = invoiceText;
+            resultElement.style.display = "block";
+        }
 
-        def format_price(price_str):
-            # Converts price string (e.g. "1,999.99") to float by removing commas
-            return float(price_str.replace(',', ''))
+        function addProduct() {
+            const productsContainer = document.getElementById('products-container');
+            const productEntries = productsContainer.getElementsByClassName('product-entry');
+            const newIndex = productEntries.length + 1;
+            
+            const newEntry = document.createElement('div');
+            newEntry.className = 'product-entry';
+            newEntry.innerHTML = `
+                <label for="product${newIndex}">Product Name:</label>
+                <input type="text" id="product${newIndex}" required>
+                <label for="price${newIndex}">Price:</label>
+                <input type="text" id="price${newIndex}" required pattern="[0-9,]*\\.?[0-9]+" title="Enter price with optional commas and decimals">
+            `;
+            
+            productsContainer.appendChild(newEntry);
+        }
 
-        def generate_invoice(event):
-            # Prevents default form submission
-            event.preventDefault()
-            
-            # Gets currency symbol based on selection
-            currency_symbol = '₱' if Element('currency').element.value == 'PHP' else '$'
-            
-            # Creates decorative ASCII header for invoice
-            ascii_banner = '''
-                ╔══════════════════════════════════════════╗
-                ║             OFFICIAL INVOICE             ║
-                ╚══════════════════════════════════════════╝'''
-            
-            # Builds invoice text with customer information
-            invoice_text = f"""{ascii_banner}
-                ------------------------------------------------
-                Customer Information:
-                Name: {Element('name').element.value}
-                Email: {Element('email').element.value}
-                Phone: {Element('phone').element.value}
-                Date: {Element('date').element.value}
+        function setup() {
+            document.getElementById('invoiceForm').addEventListener('submit', generateInvoice);
+            document.getElementById('addProductBtn').addEventListener('click', addProduct);
+        }
 
-                Product Details:
-            """
-            
-            # Gets all product entries from form
-            products_container = Element('products-container').element
-            product_entries = products_container.getElementsByClassName('product-entry')
-            total = 0  # Tracks total price
-            
-            # Processes each product entry and adds to invoice
-            for i, entry in enumerate(product_entries, 1):
-                product_name = Element(f'product{i}').element.value
-                price = format_price(Element(f'price{i}').element.value)
-                total += price
-                invoice_text += f"                {i}. {product_name}: {currency_symbol}{price:,.2f}\n"
-            
-            # Adds total amount to invoice
-            invoice_text += f"""
-                ------------------------------------------------
-                Total Amount: {currency_symbol}{total:,.2f}
-                ------------------------------------------------"""
-            
-            # Displays final invoice
-            result_element = Element('result')
-            Element('preview').write(invoice_text)
-            result_element.element.style.display = "block"
+        document.addEventListener('DOMContentLoaded', setup);
+    </script>
 
-        def add_product(event):
-            from js import document
-            # Gets container for product entries
-            products_container = Element('products-container').element
-            product_entries = products_container.getElementsByClassName('product-entry')
-            new_index = len(product_entries) + 1
-            
-            # Creates new product entry fields
-            new_entry = document.createElement('div')
-            new_entry.className = 'product-entry'
-            new_entry.innerHTML = f'''
-                <label for="product{new_index}">Product Name:</label>
-                <input type="text" id="product{new_index}">
-                <label for="price{new_index}">Price:</label>
-                <input type="text" id="price{new_index}" pattern="[0-9,]*\.?[0-9]+" title="Enter price with optional commas and decimals">
-            '''
-            
-            # Adds new entry to form
-            products_container.appendChild(new_entry)
-
-        def setup():
-            # Sets up event handlers for form submission and add product button
-            Element('invoiceForm').element.onsubmit = generate_invoice
-            Element('addProductBtn').element.onclick = add_product
-
-        # Initializes the application
-        setup()
-    </py-script>
     <footer>
         <p>Copyright © 2024 Beomarc Andrew D. Cartoneros. All rights reserved.</p>
     </footer>
